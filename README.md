@@ -1,138 +1,124 @@
-# StreamingApp
+# StreamingApp — DevOps Graded Project
 
-Stream premium video content, host live watch parties, and manage your catalogue with a modern microservice architecture. The platform now ships with a production-ready admin portal, real-time chat, S3-backed adaptive streaming, and a redesigned cinematic frontend experience.
+A MERN-based streaming application organised as a frontend and four backend microservices, with MongoDB as the shared database.
 
-## Architecture
+## Project architecture
 
-| Service | Port | Description |
-| --- | --- | --- |
-| `authService` | 3001 | User authentication, registration, JWT issuance |
-| `streamingService` | 3002 | Video catalogue, S3 playback endpoints, public APIs |
-| `adminService` | 3003 | Dedicated admin microservice for asset management and uploads |
-| `chatService` | 3004 | Websocket + REST chat for live watch parties |
-| `frontend` | 3000 | React SPA with revamped UI and integrated chat |
-| `mongo` | 27017 | Shared MongoDB instance |
+| Component | Container port | Responsibility |
+|---|---:|---|
+| Frontend | 80 | React web application |
+| Auth service | 3001 | Authentication and user access |
+| Streaming service | 3002 | Streaming APIs and catalogue |
+| Admin service | 3003 | Administration and asset management |
+| Chat service | 3004 | Real-time chat APIs |
+| MongoDB | 27017 | Application database |
 
-All backend services share common database models and utilities through `backend/common`.
+The Docker Compose configuration builds the five application images and starts MongoDB with the application services.
 
-## Environment Configuration
+## Repository layout
 
-Create an `.env` for each service (or export variables before running). All services accept the standard AWS credentials for S3 access.
+- `frontend/` — React application and frontend Dockerfile
+- `backend/authService/` — authentication microservice
+- `backend/streamingService/` — streaming microservice
+- `backend/adminService/` — admin microservice
+- `backend/chatService/` — chat microservice
+- `docker-compose.yml` — local multi-container configuration
+- `helm/streamingapp/` — Helm chart for Kubernetes packaging
+- `Jenkinsfile` — Jenkins pipeline to build and push application images to Amazon ECR
 
-### Auth Service (`backend/authService/.env`)
-```ini
-PORT=3001
-MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
-CLIENT_URLS=http://localhost:3000
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=ap-south-1
-AWS_S3_BUCKET=
-```
+## Run locally with Docker Compose
 
-### Streaming Service (`backend/streamingService/.env`)
-```ini
-PORT=3002
-MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
-CLIENT_URLS=http://localhost:3000
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=ap-south-1
-AWS_S3_BUCKET=
-AWS_CDN_URL=
-STREAMING_PUBLIC_URL=http://localhost:3002
-```
+Prerequisites: Docker Engine and Docker Compose.
 
-### Admin Service (`backend/adminService/.env`)
-```ini
-PORT=3003
-MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
-CLIENT_URLS=http://localhost:3000
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=ap-south-1
-AWS_S3_BUCKET=
-```
-
-### Chat Service (`backend/chatService/.env`)
-```ini
-PORT=3004
-MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
-CLIENT_URLS=http://localhost:3000
-```
-
-### Frontend build variables (`frontend/.env` or Docker build args)
-```ini
-REACT_APP_AUTH_API_URL=http://localhost:3001/api
-REACT_APP_STREAMING_API_URL=http://localhost:3002/api
-REACT_APP_STREAMING_PUBLIC_URL=http://localhost:3002
-REACT_APP_ADMIN_API_URL=http://localhost:3003/api/admin
-REACT_APP_CHAT_API_URL=http://localhost:3004/api/chat
-REACT_APP_CHAT_SOCKET_URL=http://localhost:3004
-```
-
-## Running with Docker Compose
-
-1. Populate the environment variables above (or rely on the defaults baked into `docker-compose.yml`).
-2. Build and start the stack:
-   ```bash
-   docker-compose up --build
-   ```
-3. Navigate to `http://localhost:3000` for the web app.
-
-The compose file provisions MongoDB plus all four Node.js microservices. S3 credentials are optional for local testing—you can still browse seeded metadata, but streaming requires valid S3 objects.
-
-## Local Development
-
-Install dependencies for each service:
+1. Clone this repository.
+2. Create a local `.env` file if you need to override the defaults. Do not commit credentials or production secrets.
+3. Build and start the stack:
 
 ```bash
-# auth service
-cd backend/authService && npm install
-
-# streaming service
-cd ../streamingService && npm install
-
-# admin service
-cd ../adminService && npm install
-
-# chat service
-cd ../chatService && npm install
-
-# frontend
-cd ../../frontend && npm install
+docker compose up --build -d
 ```
 
-Run the services (in separate terminals) after starting MongoDB:
+4. Open the frontend at `http://localhost:3000`.
+5. Check container status and logs:
 
 ```bash
-cd backend/authService && npm run dev
-cd backend/streamingService && npm run dev
-cd backend/adminService && npm run dev
-cd backend/chatService && npm run dev
-cd frontend && npm start
+docker compose ps
+docker compose logs -f
 ```
 
-## Feature Highlights
+Stop the stack:
 
-- **S3-backed adaptive streaming** with secure signed uploads for admins.
-- **Dedicated admin microservice** for video ingestion, metadata management, and featured curation.
-- **Real-time chat** overlay in the player (Socket.IO + persistent message history).
-- **Modern React experience** featuring cinematic hero sections, dynamic carousels, and responsive design.
-- **Role-aware access control** across frontend routes and backend microservices.
+```bash
+docker compose down
+```
 
-## Testing
+To remove the local MongoDB volume as well (this deletes local database data):
 
-Automated tests are not yet included. Recommended smoke checks:
+```bash
+docker compose down -v
+```
 
-1. Register and log in through the web UI.
-2. Upload a small video + thumbnail via the admin dashboard (requires valid S3 credentials).
-3. Confirm playback from the browse page and verify that chat messages broadcast between multiple browser tabs.
+## Environment and secrets
 
-## License
+The Compose file supports environment overrides for MongoDB, JWT, AWS S3/CDN and frontend API endpoints. Set the required values in a local, untracked `.env` file or in the deployment platform's secret manager.
 
-MIT © StreamFlix Team
+**Security:** replace all development defaults such as `JWT_SECRET=changeme` before any shared or production deployment. Never commit AWS access keys, real JWT secrets, database passwords, or populated `.env` files. Prefer an IAM role for AWS workloads instead of long-lived access keys.
+
+The frontend API URLs are build-time values. Set the `REACT_APP_*` variables to addresses reachable by the users' browsers before building the frontend image; `localhost` is only suitable for local development.
+
+## Docker images and Amazon ECR
+
+The project has five application images: `frontend`, `auth`, `streaming`, `admin`, and `chat`. The Jenkins pipeline in the repository builds and pushes these images to the ECR registry configured in the pipeline.
+
+Before running the pipeline, configure the Jenkins agent with Docker CLI/daemon access and AWS CLI, and create a Jenkins username/password credential containing an AWS access key ID and secret access key. Use credential ID `aws-credentials`. The IAM identity must have permission to authenticate to ECR and push to the five repositories in the configured AWS account and region.
+
+Update the registry and region constants in the Jenkinsfile if your AWS account or region differs. Do not put AWS keys in the Jenkinsfile.
+
+## Jenkins CI pipeline
+
+The root-level `Jenkinsfile` provides a declarative pipeline that checks out the configured branch, authenticates to ECR using Jenkins credentials, builds all five Docker images, and pushes them with the `latest` tag.
+
+Configure a Pipeline job to use this repository and the `submission-ready` branch (or merge the file into `main` first). For automatic builds after commits, configure a GitHub webhook to the Jenkins endpoint or enable SCM polling in the Jenkins job. A Jenkinsfile alone does not configure the GitHub webhook.
+
+## Kubernetes and Helm
+
+The Helm chart is in `helm/streamingapp`. Validate and render it locally:
+
+```bash
+helm lint helm/streamingapp
+helm template streamingapp helm/streamingapp
+```
+
+These commands validate chart structure and render Kubernetes manifests locally. They do **not** create a Kubernetes cluster or deploy the application.
+
+**Deployment status:** the chart has been packaged and locally validated. An Amazon EKS cluster and an actual Kubernetes rollout have not been created as part of this repository submission. Before deploying, configure secure Kubernetes Secrets, ECR image-pull permissions, a suitable storage class for MongoDB, reachable frontend API URLs, and an appropriate ingress/load-balancer setup. Do not use the development JWT default in a cluster.
+
+## AWS monitoring
+
+The project work includes CloudWatch EC2 CPU monitoring and centralized Docker application log collection in the `/streamingapp/docker` log group (AWS region `ap-south-1`). The Docker Compose logging driver is configured for the same log group and service-specific streams. Ensure the EC2 instance role has the required CloudWatch Logs permissions and that the log group exists before starting containers with the `awslogs` driver.
+
+## Health checks and validation
+
+The following service health endpoints were used during project verification:
+
+| Component | Endpoint |
+|---|---|
+| Frontend | `http://localhost:3000` |
+| Auth | `http://localhost:3001/health` |
+| Streaming | `http://localhost:3002/api/health` |
+| Admin | `http://localhost:3003/api/health` |
+| Chat | `http://localhost:3004/api/health` |
+
+Use the actual host/port values configured in your environment. A successful local health check confirms the service responds locally; it does not by itself demonstrate Kubernetes deployment or autoscaling.
+
+## Current project scope and limitations
+
+- Dockerfiles and Docker Compose configuration are included for the frontend and four backend services.
+- Jenkins pipeline source is included for building and pushing the five application images to ECR; Jenkins credentials, agent prerequisites, job configuration, and webhook/polling must be configured in the Jenkins environment.
+- Helm chart packaging and local lint/render validation are included.
+- CloudWatch monitoring/logging configuration is documented.
+- EKS cluster creation, Helm deployment to a live cluster, and Kubernetes autoscaling/load testing are not claimed as completed.
+
+## Submission evidence
+
+Keep screenshots of successful Docker builds and health checks, Jenkins build output, ECR repositories/images, CloudWatch alarm/log streams, and Helm lint/template output alongside the final project report. Do not include credentials or secret values in screenshots.
