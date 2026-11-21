@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo:6
@@ -8,6 +6,13 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: mongo
+        awslogs-create-group: "true"
 
   auth:
     build:
@@ -25,6 +30,13 @@ services:
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
     ports:
       - "${AUTH_PORT:-3001}:3001"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: auth
+        awslogs-create-group: "true"
 
   streaming:
     build:
@@ -45,6 +57,13 @@ services:
       STREAMING_PUBLIC_URL: ${STREAMING_PUBLIC_URL:-http://localhost:3002}
     ports:
       - "${STREAMING_PORT:-3002}:3002"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: streaming
+        awslogs-create-group: "true"
 
   admin:
     build:
@@ -64,6 +83,13 @@ services:
       AWS_CDN_URL: ${AWS_CDN_URL:-}
     ports:
       - "${ADMIN_PORT:-3003}:3003"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: admin
+        awslogs-create-group: "true"
 
   chat:
     build:
@@ -78,6 +104,13 @@ services:
       CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
     ports:
       - "${CHAT_PORT:-3004}:3004"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: chat
+        awslogs-create-group: "true"
 
   frontend:
     build:
@@ -96,6 +129,13 @@ services:
       - chat
     ports:
       - "3000:80"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /streamingapp/docker
+        awslogs-stream: frontend
+        awslogs-create-group: "true"
 
 volumes:
   mongo-data:
